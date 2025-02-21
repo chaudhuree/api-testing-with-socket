@@ -12,7 +12,8 @@ let weatherCache = {
     data: null,
     lastUpdated: 0
 };
-const CACHE_DURATION = 10000; // Cache for 1 seconds
+// const CACHE_DURATION = 10000; // Cache for 10 seconds
+const CACHE_DURATION = 0; // No cache
 
 // Weather API configuration
 const WEATHER_API_KEY = 'd6c3fa7a15384efc97073333232006';
@@ -48,7 +49,7 @@ async function fetchWeatherData() {
     });
 }
 
-// Function to get weather data with caching
+// Function to get weather data with caching and return old data if fetch fails
 async function getWeatherData() {
     const now = Date.now();
     if (!weatherCache.data || now - weatherCache.lastUpdated > CACHE_DURATION) {
@@ -57,25 +58,25 @@ async function getWeatherData() {
             weatherCache.lastUpdated = now;
         } catch (error) {
             console.error('Error fetching weather data:', error);
-            return weatherCache.data; // Return old data if fetch fails
+            return weatherCache.data;
         }
     }
     return weatherCache.data;
 }
 
-// WebSocket connection handling
+// WebSocket functionality
 io.on('connection', (socket) => {
     console.log('Client connected');
     
-    // Send initial data immediately
+    // Initial weather data setup for the first time
     getWeatherData().then(data => socket.emit('weather_update', data));
     
-    // Setup interval for this connection
+    // api call for every one second and send to client
     const interval = setInterval(async () => {
         const data = await getWeatherData();
         // console.log({data});
         socket.emit('weather_update', data);
-    }, 100);
+    }, 1000);
     
     socket.on('disconnect', () => {
         clearInterval(interval);
@@ -83,11 +84,9 @@ io.on('connection', (socket) => {
     });
 });
 
-// Serve static files
 app.use(express.static('public'));
 
-// Start server
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 http.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
